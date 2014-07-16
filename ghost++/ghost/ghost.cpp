@@ -1082,23 +1082,8 @@ bool CGHost :: Update( long usecBlock )
         m_LastAutoHostTime = GetTime( );
     }
 
-    // refresh flamelist all 60 minutes
-    if( m_FlameCheck && !m_CallableFlameList && ( GetTime( ) - m_LastFlameListUpdate >= 1200 || m_LastFlameListUpdate==0 ) )
-    {
-        m_CallableFlameList = m_DB->ThreadedFlameList( );
-        m_LastFlameListUpdate = GetTime( );
-    }
-
-    if( m_CallableFlameList && m_CallableFlameList->GetReady( )&& m_FlameCheck)
-    {
-        m_Flames = m_CallableFlameList->GetResult( );
-        m_DB->RecoverCallable( m_CallableFlameList );
-        delete m_CallableFlameList;
-        m_CallableFlameList = NULL;
-    }
-
     // refresh alias list all 5 minutes
-    if( !m_CallableAliasList && ( GetTime( ) - m_LastAliasListUpdate >= 300 || m_LastAliasListUpdate == 0 ) )
+    if( !m_CallableAliasList &&  m_LastAliasListUpdate == 0 )
     {
         m_CallableAliasList = m_DB->ThreadedAliasList( );
         m_LastAliasListUpdate = GetTime( );
@@ -1110,68 +1095,6 @@ bool CGHost :: Update( long usecBlock )
         m_DB->RecoverCallable( m_CallableAliasList );
         delete m_CallableAliasList;
         m_CallableAliasList = NULL;
-    }
-
-    // refresh forcedgproxy list all 5 minutes
-    if( !m_CallableForcedGProxyList && ( GetTime( ) - m_LastGProxyListUpdate >= 300 || m_LastGProxyListUpdate == 0 ) )
-    {
-        m_CallableForcedGProxyList = m_DB->ThreadedForcedGProxyList( );
-        m_LastGProxyListUpdate = GetTime( );
-    }
-
-    if( m_CallableForcedGProxyList && m_CallableForcedGProxyList->GetReady( ))
-    {
-        m_GProxyList = m_CallableForcedGProxyList->GetResult( );
-        m_DB->RecoverCallable( m_CallableForcedGProxyList );
-        delete m_CallableForcedGProxyList;
-        m_CallableForcedGProxyList = NULL;
-    }
-
-    // refresh denied names list all 60 minutes
-    if( !m_CallableDeniedNamesList && ( GetTime( ) - m_LastDNListUpdate >= 3600 || m_LastDNListUpdate == 0 ) )
-    {
-        m_CallableDeniedNamesList = m_DB->ThreadedDeniedNamesList( );
-        m_LastDNListUpdate = GetTime( );
-    }
-
-    if( m_CallableDeniedNamesList && m_CallableDeniedNamesList->GetReady( ) )
-    {
-        m_DeniedNamePartials = m_CallableDeniedNamesList->GetResult( );
-        m_DB->RecoverCallable( m_CallableDeniedNamesList );
-        delete m_CallableDeniedNamesList;
-        m_CallableDeniedNamesList = NULL;
-    }
-
-    // refresh announce list all 60 minutes
-    if( !m_CallableAnnounceList && ( GetTime( ) - m_LastAnnounceListUpdate >= 3600 || m_LastAnnounceListUpdate==0 ) )
-    {
-        m_CallableAnnounceList = m_DB->ThreadedAnnounceList( );
-        m_LastAnnounceListUpdate = GetTime( );
-    }
-
-    if( m_CallableAnnounceList && m_CallableAnnounceList->GetReady( ) )
-    {
-        m_Announces = m_CallableAnnounceList->GetResult( );
-        m_DB->RecoverCallable( m_CallableAnnounceList );
-        delete m_CallableAnnounceList;
-        m_CallableAnnounceList = NULL;
-        //update announcenumber
-        m_AnnounceLines = m_Announces.size();
-    }
-
-    // refresh denied country list all 60 minutes
-    if( !m_CallableDCountryList && ( GetTime( ) - m_LastDCountryUpdate >= 1200 || m_LastDCountryUpdate == 0 ) )
-    {
-        m_CallableDCountryList = m_DB->ThreadedDCountryList( );
-        m_LastDCountryUpdate = GetTime( );
-    }
-
-    if( m_CallableDCountryList && m_CallableDCountryList->GetReady( ) )
-    {
-        m_DCountries = m_CallableDCountryList->GetResult( );
-        m_DB->RecoverCallable( m_CallableDCountryList );
-        delete m_CallableDCountryList;
-        m_CallableDCountryList = NULL;
     }
 
     // load a new m_ReservedHostCounter
@@ -1187,39 +1110,6 @@ bool CGHost :: Update( long usecBlock )
         m_DB->RecoverCallable( m_CallableHC );
         delete m_CallableHC;
         m_CallableHC = NULL;
-    }
-
-    //refresh command list every 5 seconds
-    if( !m_CallableCommandList && GetTime( ) - m_LastCommandListTime >= 5 )
-    {
-        m_CallableCommandList = m_DB->ThreadedCommandList( );
-        m_LastCommandListTime = GetTime();
-    }
-
-    if( m_CallableCommandList && m_CallableCommandList->GetReady( ) )
-    {
-        vector<string> commands = m_CallableCommandList->GetResult( );
-
-        for( vector<string> :: iterator i = commands.begin( ); i != commands.end( ); ++i )
-        {
-            if( !m_BNETs.empty( ) ) {
-                CONSOLE_Print("[GHOST] Executing command from MYSQL: " + *i);
-                m_BNETs[0]->BotCommand(*i, m_BNETs[0]->GetUserName(), true, true );
-            } else {
-                CONSOLE_Print("[GHOST] Couldn't execute commands from MYSQL, no battle net connection found.");
-            }
-        }
-
-        m_DB->RecoverCallable( m_CallableCommandList );
-        delete m_CallableCommandList;
-        m_CallableCommandList = NULL;
-        m_LastCommandListTime = GetTime();
-    }
-
-    if( m_CurrentGame ) {
-        if( ( GetTime() - m_CurrentGame->m_CreationTime ) >= 259200 ) {
-            m_Exiting = true;
-        }
     }
 
     m_EndTicks = GetTicks();
@@ -1721,82 +1611,17 @@ void CGHost :: CreateGame( CMap *map, unsigned char gameState, bool saveGame, st
 
 bool CGHost :: FlameCheck( string message )
 {
-    transform( message.begin( ), message.end( ), message.begin( ), ::tolower );
-
-    char forbidden[] = {",.!ï¿½$%&/()={[]}*'+#-_.:,;?|"};
-    char *check;
-    int len = message.length();
-    int c = 1;
-
-    for( std::string::iterator i=message.begin( ); i!=message.end( );)
-    {
-        check=forbidden;
-        while(*check)
-        {
-            if ( *i == *check )
-            {
-                if( c != len )
-                {
-                    i=message.erase(i);
-                    c++;
-                    continue;
-                }
-            }
-            check++;
-        }
-        i++;
-        c++;
-    }
-
-    for( int i = 0; i < m_Flames.size( ); )
-    {
-        if( message.find( m_Flames[i] ) != string :: npos )
-        {
-            return true;
-        }
-        i++;
-    }
-
     return false;
 }
 
 void CGHost :: LoadDatas( )
 {
-    CConfig CFG;
-    CFG.Read( "default.cfg" );
-
-    for( uint32_t i = 1; i < 20; ++i )
-    {
-        string Prefix;
-
-        if( i == 1 )
-            Prefix = "oh_";
-        else
-            Prefix = "oh" + UTIL_ToString( i ) + "_";
-
-        string CName = CFG.GetString( Prefix + "cname", string( ) );
-        //string Mode = CFG.GetString( "mode", string( ) );
-        //m_Modes.push_back( Mode );
-        m_ColoredNames.push_back( CName );
-    }
+  return;
 }
 
 void CGHost :: LoadRules( )
 {
-    string File = m_SharedFilesPath + "rules.txt";
-    string line;
-    ifstream myfile(File.c_str());
-    m_Rules.clear();
-    if (myfile.is_open())
-    {
-        while ( getline (myfile,line) )
-        {
-            m_Rules.push_back( line );
-        }
-        myfile.close();
-    }
-    else
-        CONSOLE_Print( "Unable to open rules.txt" );
+    return;
 }
 
 uint32_t CGHost :: GetNewHostCounter( )
@@ -1813,60 +1638,13 @@ uint32_t CGHost :: GetNewHostCounter( )
 }
 void CGHost :: LoadRanks( )
 {
-    //TODO Fix if the file is empty, dont check levels else there is a crash
-    string File = m_SharedFilesPath + "ranks.txt";
-    ifstream in;
-    in.open( File.c_str() );
-    m_Ranks.clear();
-    if( !in.fail( ) )
-    {
-        // don't print more than 8 lines
-        uint32_t Count = 0;
-        string Line;
-        while( !in.eof( ) && Count < 11 )
-        {
-            getline( in, Line );
-            if( Line.empty( ) )
-            {
-                if( !in.eof( ) )
-                    m_Ranks.push_back("Missing Rank on: "+UTIL_ToString(Count));
-            }
-            else
-                m_Ranks.push_back(Line);
-            ++Count;
-        }
-        in.close( );
-    }
-    else
-    {
-        CONSOLE_Print("Error. Unable to read file [ranks.txt]. User levels will not work for this session.");
-        m_RanksLoaded = false;
-    }
-    if(m_Ranks.size() < 10) {
-        CONSOLE_Print("Error. ranks.txt doesn't contain enough levelnames. You require at least 11(Level 0 - Level 10, with 0).");
-        m_RanksLoaded = false;
-    }
+    m_RanksLoaded = false;
+    return;
 }
 
 void CGHost :: LoadInsult()
 {
-    //TODO Fix if the file is empty, dont check levels else there is a crash
-    string File = m_SharedFilesPath + "insult.txt";
-    ifstream in;
-    in.open( File.c_str() );
-    m_Insults.clear();
-    if( !in.fail( ) )
-    {
-        string Line;
-        while( !in.eof( )  )
-        {
-            getline( in, Line );
-            m_Insults.push_back(Line);
-        }
-        in.close( );
-    }
-    else
-        CONSOLE_Print("Error. Unable to read file [insult.txt].");
+    return;
 }
 
 string CGHost :: GetTimeFunction( uint32_t type )
@@ -1910,25 +1688,7 @@ string CGHost :: GetRoomName (string RoomID)
 
 void CGHost :: ReadRoomData()
 {
-    string file = m_SharedFilesPath + "rooms.txt";
-    ifstream in;
-    in.open( file.c_str( ) );
-    m_LanRoomName.clear();
-    if( in.fail( ) )
-        CONSOLE_Print( "[GHOST] warning - unable to read file [" + file + "]" );
-    else
-    {
-        CONSOLE_Print( "[GHOST] loading file [" + file + "]" );
-        string Line;
-        while( !in.eof( ) )
-        {
-            getline( in, Line );
-            if( Line.empty( ) || Line[0] == '#' )
-                continue;
-            m_LanRoomName.push_back(Line);
-        }
-    }
-    in.close( );
+    return;
 }
 
 string CGHost :: GetAliasName( uint32_t alias ) {
@@ -2113,45 +1873,5 @@ bool CGHost ::  PlayerCached( string playername ) {
 }
 
 void CGHost :: LoadLanguages( ) {
-    /*
-    try
-    {
-        path LanCFGPath( m_LanCFGPath );
-
-        if( !exists( LanCFGPath ) )
-        {
-            CONSOLE_Print ("[ERROR] Could not find any language file. Shutting down.");
-            m_Exiting = true;
-        }
-        else
-        {
-            directory_iterator EndIterator;
-
-            for( directory_iterator i( LanCFGPath ); i != EndIterator; ++i )
-            {
-                string FileName = i->path( ).filename( ).string( );
-                string Stem = i->path( ).stem( ).string( );
-                transform( FileName.begin( ), FileName.end( ), FileName.begin( ), ::tolower );
-                transform( Stem.begin( ), Stem.end( ), Stem.begin( ), ::tolower );
-
-                if( !is_directory( i->status( ) ) && i->path( ).extension( ) == ".cfg" )
-                {
-                    delete m_Language;
-                    m_Language = new CLanguage( FileName );
-                    translationTree translation;
-                    string languageSuffix = FileName.substr(0, 2);
-                    if ( languageSuffix == "en" )
-                        m_FallBackLanguage = i;
-                    translation.suffix = languageSuffix;
-                    translation.m_Translation = m_Language;
-                    m_LanguageBundle.push_back(translation);
-                }
-            }
-        }
-    }
-    catch( const exception &ex )
-    {
-        CONSOLE_Print( "[ERROR] error listing language files - caught exception " + *ex.what( ) );
-    }
-    */
+    return;
 }
