@@ -1680,7 +1680,7 @@ void CBNET :: QueueGameRefresh( unsigned char state, string gameName, string hos
             MapHeight.push_back( 192 );
             MapHeight.push_back( 7 );
 
-            MapGameType = 13;
+            MapGameType = 4294901777;
 
             if( m_GHost->m_Reconnect )
                 m_OutPackets.push( m_Protocol->SEND_SID_STARTADVEX3( state, UTIL_CreateByteArray( MapGameType, false ), map->GetMapGameFlags( ), MapWidth, MapHeight, gameName, hostName, upTime, map->GetMapPath( ), map->GetMapCRC( ), map->GetMapSHA1( ), FixedHostCounter ) );
