@@ -1011,7 +1011,7 @@ bool CGHost :: Update( long usecBlock )
 
     // autohost
 
-    if( !m_AutoHostGameName.empty( ) && m_AutoHostMaximumGames != 0 && m_AutoHostAutoStartPlayers != 0 && GetTime( ) - m_LastAutoHostTime >= 30 && m_ReservedHostCounter != 0 )
+    if( !m_AutoHostGameName.empty( ) && m_AutoHostMaximumGames != 0 && m_AutoHostAutoStartPlayers != 0 && GetTime( ) - m_LastAutoHostTime >= 3 )
     {
         // copy all the checks from CGHost :: CreateGame here because we don't want to spam the chat when there's an error
         // instead we fail silently and try again soon
@@ -1020,7 +1020,7 @@ bool CGHost :: Update( long usecBlock )
         {
             if( m_AutoHostMap->GetValid( ) )
             {
-                string GameName = m_AutoHostGameName + " #" + UTIL_ToString( GetNewHostCounter( ) );
+                string GameName = m_AutoHostGameName;
 
                 if( GameName.size( ) <= 31 )
                 {
@@ -1095,21 +1095,6 @@ bool CGHost :: Update( long usecBlock )
         m_DB->RecoverCallable( m_CallableAliasList );
         delete m_CallableAliasList;
         m_CallableAliasList = NULL;
-    }
-
-    // load a new m_ReservedHostCounter
-    if( m_ReservedHostCounter == 0 && m_LastHCUpdate != 0 && GetTime( ) - m_LastHCUpdate >= 5 )
-    {
-        m_CallableHC = m_DB->ThreadedGameDBInit( vector<CDBBan *>(), m_AutoHostGameName, 0, 0 );
-        m_LastHCUpdate = 0;
-    }
-
-    if( m_CallableHC && m_CallableHC->GetReady( ) )
-    {
-        m_ReservedHostCounter = m_CallableHC->GetResult( );
-        m_DB->RecoverCallable( m_CallableHC );
-        delete m_CallableHC;
-        m_CallableHC = NULL;
     }
 
     m_EndTicks = GetTicks();
