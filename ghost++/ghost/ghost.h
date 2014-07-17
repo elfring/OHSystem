@@ -268,6 +268,7 @@ public:
     uint32_t m_TicksCollection;
     uint32_t m_TicksCollectionTimer;
     uint32_t m_Sampler;
+    string m_SpoofPattern;
 
     CGHost( CConfig *CFG );
     ~CGHost( );

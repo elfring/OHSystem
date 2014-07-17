@@ -1347,6 +1347,7 @@ void CGHost :: SetConfigs( CConfig *CFG )
     m_Website = CFG->GetString("oh_general_domain", "http://ohsystem.net/" );
     m_SharedFilesPath = UTIL_AddPathSeperator( CFG->GetString( "bot_sharedfilespath", string( ) ) );
     m_BroadCastPort = CFG->GetInt("oh_broadcastport", 6112 );
+    m_SpoofPattern = CFG->GetString("oh_spoofpattern", string());
     LoadDatas();
     LoadRules();
     LoadRanks();

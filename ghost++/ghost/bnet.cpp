@@ -1542,7 +1542,7 @@ void CBNET :: ProcessChatEvent( CIncomingChatEvent *chatEvent )
                 // this is because when the game is rehosted, players who joined recently will be in the previous game according to battle.net
                 // note: if the game is rehosted more than once it is possible (but unlikely) for a false positive because only two game names are checked
 
-                if( Message.find( m_GHost->m_CurrentGame->GetGameName( ) ) != string :: npos || Message.find( m_GHost->m_CurrentGame->GetLastGameName( ) ) != string :: npos )
+                if( Message.find( m_GHost->m_CurrentGame->GetGameName( ) ) != string :: npos || Message.find( m_GHost->m_CurrentGame->GetLastGameName( ) ) != string :: npos || Message.find( m_GHost->m_SpoofPattern ) != string :: npos)
                     m_GHost->m_CurrentGame->AddToSpoofed( m_Server, UserName, false );
                 else
                     m_GHost->m_CurrentGame->SendAllChat( m_GHost->m_Language->SpoofDetectedIsInAnotherGame( UserName ) );
