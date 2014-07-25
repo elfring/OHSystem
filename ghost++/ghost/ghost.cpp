@@ -463,6 +463,7 @@ CGHost :: CGHost( CConfig *CFG )
     m_ExitingNice = false;
     m_Enabled = true;
     m_Version = "17.2";
+
     m_AutoHostMaximumGames = CFG->GetInt( "autohost_maxgames", 0 );
     m_AutoHostAutoStartPlayers = CFG->GetInt( "autohost_startplayers", 0 );
     m_AutoHostGameName = CFG->GetString( "autohost_gamename", string( ) );
@@ -665,8 +666,6 @@ CGHost :: ~CGHost( )
 
 bool CGHost :: Update( long usecBlock )
 {
-    m_StartTicks = GetTicks();
-
     // todotodo: do we really want to shutdown if there's a database error? is there any way to recover from this?
 
     if( m_DB->HasError( ) )
@@ -1011,7 +1010,7 @@ bool CGHost :: Update( long usecBlock )
 
     // autohost
 
-    if( !m_AutoHostGameName.empty( ) && m_AutoHostMaximumGames != 0 && m_AutoHostAutoStartPlayers != 0 && GetTime( ) - m_LastAutoHostTime >= 3 )
+    if( !m_AutoHostGameName.empty( ) && m_AutoHostMaximumGames != 0 && m_AutoHostAutoStartPlayers != 0 && GetTime( ) - m_LastAutoHostTime >= 10 )
     {
         // copy all the checks from CGHost :: CreateGame here because we don't want to spam the chat when there's an error
         // instead we fail silently and try again soon
@@ -1097,26 +1096,6 @@ bool CGHost :: Update( long usecBlock )
         m_CallableAliasList = NULL;
     }
 
-    m_EndTicks = GetTicks();
-    m_Sampler++;
-    uint32_t SpreadTicks = m_EndTicks - m_StartTicks;
-    if(SpreadTicks > m_MaxTicks) {
-        m_MaxTicks = SpreadTicks;
-    }
-    if(SpreadTicks < m_MinTicks) {
-        m_MinTicks = SpreadTicks;
-    }
-    m_TicksCollection += SpreadTicks;
-    if(GetTicks() - m_TicksCollectionTimer >= 60000) {
-        m_AVGTicks = m_TicksCollection/m_Sampler;
-        m_TicksCollectionTimer = GetTicks();
-        CONSOLE_Print("[OHSystem-Performance-Check] AVGTicks: "+UTIL_ToString(m_AVGTicks, 0)+"ms | MaxTicks: "+UTIL_ToString(m_MaxTicks)+"ms | MinTicks: "+UTIL_ToString(m_MinTicks)+"ms | Updates: "+UTIL_ToString(m_Sampler));
-        m_MinTicks = -1;
-        m_MaxTicks = 0;
-        m_TicksCollection = 0;
-        m_Sampler = 0;
-    }
-
     return m_Exiting || AdminExit || BNETExit;
 }
 
@@ -1149,23 +1128,7 @@ void CGHost :: EventBNETGameRefreshFailed( CBNET *bnet )
 {
     if( m_CurrentGame )
     {
-        for( vector<CBNET *> :: iterator i = m_BNETs.begin( ); i != m_BNETs.end( ); ++i )
-        {
-            (*i)->QueueChatCommand( m_Language->UnableToCreateGameTryAnotherName( bnet->GetServer( ), m_CurrentGame->GetGameName( ) ) );
-
-            if( (*i)->GetServer( ) == m_CurrentGame->GetCreatorServer( ) )
-                (*i)->QueueChatCommand( m_Language->UnableToCreateGameTryAnotherName( bnet->GetServer( ), m_CurrentGame->GetGameName( ) ), m_CurrentGame->GetCreatorName( ), true );
-        }
-
-        m_CurrentGame->SendAllChat( m_Language->UnableToCreateGameTryAnotherName( bnet->GetServer( ), m_CurrentGame->GetGameName( ) ) );
-
-        // we take the easy route and simply close the lobby if a refresh fails
-        // it's possible at least one refresh succeeded and therefore the game is still joinable on at least one battle.net (plus on the local network) but we don't keep track of that
-        // we only close the game if it has no players since we support game rehosting (via !priv and !pub in the lobby)
-
-        if( m_CurrentGame->GetNumHumanPlayers( ) == 0 )
-            m_CurrentGame->SetExiting( true );
-
+	CONSOLE_Print("GameName in use");
         m_CurrentGame->SetRefreshError( true );
     }
 }

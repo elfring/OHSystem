@@ -183,7 +183,6 @@ CGame :: ~CGame( )
                 m_LogData = m_LogData + "\t" + "-";
         }
         m_LogData = m_LogData + "\n";
-        m_PairedLogUpdates.push_back( PairedLogUpdate( string( ), m_GHost->m_DB->ThreadedStoreLog( m_HostCounter, m_LogData,  m_AdminLog ) ) );
         m_LogData = string();
         m_AdminLog = vector<string>();
         m_PlayerUpdate = false;

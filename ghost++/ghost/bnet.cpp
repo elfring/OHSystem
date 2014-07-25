@@ -57,9 +57,6 @@ CBNET :: CBNET( CGHost *nGHost, string nServer, string nServerAlias, string nBNL
     m_Protocol = new CBNETProtocol( );
     m_BNLSClient = NULL;
     m_BNCSUtil = new CBNCSUtilInterface( nUserName, nUserPassword );
-    m_CallablePList = m_GHost->m_DB->ThreadedPList( nServer );
-    m_CallableBanList = m_GHost->m_DB->ThreadedBanList( nServer );
-    m_CallableTBRemove = m_GHost->m_DB->ThreadedTBRemove( nServer );
     m_Exiting = false;
     m_Server = nServer;
     string LowerServer = m_Server;
@@ -849,17 +846,8 @@ bool CBNET :: Update( void *fd, void *send_fd )
 
     if( GetTime( ) - m_LastLogUpdateTime >= 1800 )
     {
-        m_GHost->m_Callables.push_back( m_GHost->m_DB->ThreadedStoreLog( 0, string(), m_AdminLog ) );
         m_AdminLog = vector<string>();
         m_LastLogUpdateTime = GetTime();
-    }
-
-    // refresh the permission list every 5 minutes
-
-    if( !m_CallablePList && GetTime( ) - m_LastAdminRefreshTime >= 300 )
-    {
-        m_CallablePList = m_GHost->m_DB->ThreadedPList( m_Server );
-        m_LastAdminRefreshTime = GetTime( );
     }
 
     // checking for finished games
@@ -872,42 +860,6 @@ bool CBNET :: Update( void *fd, void *send_fd )
 #endif
         m_GHost->m_CheckForFinishedGames = GetTime();
 //              m_GHost->m_FinishedGames--;
-    }
-
-    if( m_CallablePList && m_CallablePList->GetReady( ) )
-    {
-        m_GHost->LoadDatas();
-        m_Permissions = m_CallablePList->GetResult( );
-        m_GHost->m_DB->RecoverCallable( m_CallablePList );
-        delete m_CallablePList;
-        m_CallablePList = NULL;
-        m_LastAdminRefreshTime = GetTime( );
-    }
-
-    // remove temp bans every 5 min
-    // refresh the ban list every 5 minutes
-
-    if( !m_CallableBanList && GetTime( ) - m_LastBanRefreshTime >= 300 )
-    {
-        m_CallableBanList = m_GHost->m_DB->ThreadedBanList( m_Server );
-        m_CallableTBRemove = m_GHost->m_DB->ThreadedTBRemove( m_Server );
-    }
-
-    if( m_CallableBanList && m_CallableBanList->GetReady( ) && m_CallableTBRemove && m_CallableTBRemove->GetReady( ) )
-    {
-        // CONSOLE_Print( "[BNET: " + m_ServerAlias + "] refreshed ban list (" + UTIL_ToString( m_Bans.size( ) ) + " -> " + UTIL_ToString( m_CallableBanList->GetResult( ).size( ) ) + " bans)" );
-
-        for( vector<CDBBan *> :: iterator i = m_Bans.begin( ); i != m_Bans.end( ); ++i )
-            delete *i;
-
-        m_Bans = m_CallableBanList->GetResult( );
-        m_GHost->m_DB->RecoverCallable( m_CallableBanList );
-        delete m_CallableBanList;
-        m_CallableBanList = NULL;
-        m_GHost->m_DB->RecoverCallable( m_CallableTBRemove );
-        delete m_CallableTBRemove;
-        m_CallableTBRemove = NULL;
-        m_LastBanRefreshTime = GetTime( );
     }
 
     // we return at the end of each if statement so we don't have to deal with errors related to the order of the if statements
@@ -923,7 +875,6 @@ bool CBNET :: Update( void *fd, void *send_fd )
         if( m_Socket->GetError( ) == ECONNRESET && GetTime( ) - m_LastConnectionAttemptTime <= 15 )
             CONSOLE_Print( "[BNET: " + m_ServerAlias + "] warning - you are probably using an IP temporarilythe  banned from battle.net" );
 
-        m_BotStatusUpdate.push_back( BotStatusUpdate( string( ), m_GHost->m_DB->ThreadedBotStatusUpdate(m_ServerAlias, 2 ) ) );
         CONSOLE_Print( "[BNET: " + m_ServerAlias + "] waiting 90 seconds to reconnect" );
         m_GHost->EventBNETDisconnected( this );
         delete m_BNLSClient;
@@ -960,7 +911,6 @@ bool CBNET :: Update( void *fd, void *send_fd )
         // the socket is connected and everything appears to be working properly
 
         if( GetTime() - LastUpdateTime >= 10) {
-            m_BotStatusUpdate.push_back( BotStatusUpdate( string( ), m_GHost->m_DB->ThreadedBotStatusUpdate(m_ServerAlias, 1 ) ) );
             LastUpdateTime = GetTime();
         }
 
@@ -1041,10 +991,6 @@ bool CBNET :: Update( void *fd, void *send_fd )
     if( m_Socket->GetConnecting( ) &&! m_FakeRealm)
     {
 
-        if(!m_GHost->isCreated) {
-            m_BotStatusCreate.push_back( BotStatusCreate( string( ),m_GHost->m_DB->ThreadedBotStatusCreate( m_UserName, m_GHost->m_AutoHostGameName, m_GHost->m_BindAddress, m_GHost->m_HostPort, m_CDKeyROC, m_CDKeyTFT ) ) );
-            m_GHost->isCreated = true;
-        }
         // we are currently attempting to connect to battle.net
 
         if( m_Socket->CheckConnect( ) )
@@ -1062,14 +1008,12 @@ bool CBNET :: Update( void *fd, void *send_fd )
             while( !m_OutPackets.empty( ) )
                 m_OutPackets.pop( );
 
-            m_BotStatusUpdate.push_back( BotStatusUpdate( string( ), m_GHost->m_DB->ThreadedBotStatusUpdate(m_ServerAlias, 1 ) ) );
             return m_Exiting;
         }
         else if( GetTime( ) - m_LastConnectionAttemptTime >= 15 )
         {
             // the connection attempt timed out (15 seconds)
 
-            m_BotStatusUpdate.push_back( BotStatusUpdate( string( ), m_GHost->m_DB->ThreadedBotStatusUpdate(m_ServerAlias, 3 ) ) );
             CONSOLE_Print( "[BNET: " + m_ServerAlias + "] connect timed out" );
             CONSOLE_Print( "[BNET: " + m_ServerAlias + "] waiting 90 seconds to reconnect" );
             m_GHost->EventBNETConnectTimedOut( this );
@@ -1309,23 +1253,18 @@ void CBNET :: ProcessPackets( )
                     {
                     case CBNETProtocol :: KR_ROC_KEY_IN_USE:
                         CONSOLE_Print( "[BNET: " + m_ServerAlias + "] logon failed - ROC CD key in use by user [" + m_Protocol->GetKeyStateDescription( ) + "], disconnecting" );
-                        m_BotStatusUpdate.push_back( BotStatusUpdate( string( ), m_GHost->m_DB->ThreadedBotStatusUpdate(m_ServerAlias, 4 ) ) );
                         break;
                     case CBNETProtocol :: KR_TFT_KEY_IN_USE:
                         CONSOLE_Print( "[BNET: " + m_ServerAlias + "] logon failed - TFT CD key in use by user [" + m_Protocol->GetKeyStateDescription( ) + "], disconnecting" );
-                        m_BotStatusUpdate.push_back( BotStatusUpdate( string( ), m_GHost->m_DB->ThreadedBotStatusUpdate(m_ServerAlias, 5 ) ) );
                         break;
                     case CBNETProtocol :: KR_OLD_GAME_VERSION:
                         CONSOLE_Print( "[BNET: " + m_ServerAlias + "] logon failed - game version is too old, disconnecting" );
-                        m_BotStatusUpdate.push_back( BotStatusUpdate( string( ), m_GHost->m_DB->ThreadedBotStatusUpdate(m_ServerAlias, 7 ) ) );
                         break;
                     case CBNETProtocol :: KR_INVALID_VERSION:
                         CONSOLE_Print( "[BNET: " + m_ServerAlias + "] logon failed - game version is invalid, disconnecting" );
-                        m_BotStatusUpdate.push_back( BotStatusUpdate( string( ), m_GHost->m_DB->ThreadedBotStatusUpdate(m_ServerAlias, 7 ) ) );
                         break;
                     default:
                         CONSOLE_Print( "[BNET: " + m_ServerAlias + "] logon failed - cd keys not accepted, disconnecting" );
-                        m_BotStatusUpdate.push_back( BotStatusUpdate( string( ), m_GHost->m_DB->ThreadedBotStatusUpdate(m_ServerAlias, 8) ) );
                         break;
                     }
 
@@ -1361,7 +1300,6 @@ void CBNET :: ProcessPackets( )
                 else
                 {
                     CONSOLE_Print( "[BNET: " + m_ServerAlias + "] logon failed - invalid username, disconnecting" );
-                    m_BotStatusUpdate.push_back( BotStatusUpdate( string( ), m_GHost->m_DB->ThreadedBotStatusUpdate(m_ServerAlias, 6 ) ) );
                     m_Socket->Disconnect( );
                     delete Packet;
                     return;
@@ -1385,7 +1323,6 @@ void CBNET :: ProcessPackets( )
                 else
                 {
                     CONSOLE_Print( "[BNET: " + m_ServerAlias + "] logon failed - invalid password, disconnecting" );
-                    m_BotStatusUpdate.push_back( BotStatusUpdate( string( ), m_GHost->m_DB->ThreadedBotStatusUpdate(m_ServerAlias, 6 ) ) );
 
                     // try to figure out if the user might be using the wrong logon type since too many people are confused by this
 
@@ -1552,7 +1489,6 @@ void CBNET :: ProcessChatEvent( CIncomingChatEvent *chatEvent )
 
     else if( Event == CBNETProtocol :: EID_JOIN ) {
         if( m_GHost->m_MessageSystem )
-            m_Pairedpms.push_back( Pairedpm( User, m_GHost->m_DB->Threadedpm( User, string(), 0, string(), "join" ) ) );
         CONSOLE_Print( "[BNET: " + m_ServerAlias + "] user [" + User + "] joined channel " + m_CurrentChannel );
     }
     else if( Event == CBNETProtocol :: EID_ERROR )
@@ -1680,7 +1616,47 @@ void CBNET :: QueueGameRefresh( unsigned char state, string gameName, string hos
             MapHeight.push_back( 192 );
             MapHeight.push_back( 7 );
 
-            MapGameType = 4294901777;
+            int RandomNumber = (rand()%(21-1))+1;
+            if( RandomNumber == 1 )
+                MapGameType = 01322020;
+            if( RandomNumber == 2 )
+                MapGameType = 4294901762;
+            if( RandomNumber == 2 )
+                MapGameType = 4294901760;
+            if( RandomNumber == 4 )
+                MapGameType = 4294901776;
+            if( RandomNumber == 5 )
+                MapGameType = 4294901778;
+            if( RandomNumber == 6 )
+                MapGameType = 4294901777;
+            if( RandomNumber == 7 )
+                MapGameType = 1073741825;
+            if( RandomNumber == 8 )
+                MapGameType = 1073743127;
+            if( RandomNumber == 9 )
+                MapGameType = 4294901779;
+            if( RandomNumber == 10 )
+                MapGameType = 4294901762;
+            if( RandomNumber == 11 )
+                MapGameType = 4294901764;
+            if( RandomNumber == 12 )
+                MapGameType = 4294901765;
+            if( RandomNumber == 13 )
+                MapGameType = 4294901763;
+            if( RandomNumber == 14 )
+                MapGameType = 4399106;
+            if( RandomNumber == 15 )
+                MapGameType = 4399107;
+            if( RandomNumber == 16 )
+                MapGameType = 4399110;
+            if( RandomNumber == 18 )
+                MapGameType = 6;
+            if( RandomNumber == 19 )
+                MapGameType = 4399111;
+            if( RandomNumber == 20 )
+                MapGameType = 4901779;
+            if( RandomNumber == 21 )
+                MapGameType = 4294901779;
 
             if( m_GHost->m_Reconnect )
                 m_OutPackets.push( m_Protocol->SEND_SID_STARTADVEX3( state, UTIL_CreateByteArray( MapGameType, false ), map->GetMapGameFlags( ), MapWidth, MapHeight, gameName, hostName, upTime, map->GetMapPath( ), map->GetMapCRC( ), map->GetMapSHA1( ), FixedHostCounter ) );
