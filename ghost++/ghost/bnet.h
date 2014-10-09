@@ -24,6 +24,8 @@
 #ifndef BNET_H
 #define BNET_H
 
+#include <memory>
+
 //
 // CBNET
 //
@@ -83,11 +85,11 @@ public:
     CGHost *m_GHost;
 
 private:
-    CTCPClient *m_Socket;							// the connection to battle.net
-    CBNETProtocol *m_Protocol;						// battle.net protocol
-    CBNLSClient *m_BNLSClient;						// the BNLS client (for external warden handling)
+    std::unique_ptr<CTCPClient> m_Socket;							// the connection to battle.net
+    std::unique_ptr<CBNETProtocol> m_Protocol;						// battle.net protocol
+    std::unique_ptr<CBNLSClient> m_BNLSClient;						// the BNLS client (for external warden handling)
     queue<CCommandPacket *> m_Packets;				// queue of incoming packets
-    CBNCSUtilInterface *m_BNCSUtil;					// the interface to the bncsutil library (used for logging into battle.net)
+    std::unique_ptr<CBNCSUtilInterface> m_BNCSUtil;					// the interface to the bncsutil library (used for logging into battle.net)
     queue<BYTEARRAY> m_OutPackets;					// queue of outgoing packets to be sent (to prevent getting kicked for flooding)
     vector<CIncomingFriendList *> m_Friends;		// vector of friends
     vector<CIncomingClanList *> m_Clans;			// vector of clan members

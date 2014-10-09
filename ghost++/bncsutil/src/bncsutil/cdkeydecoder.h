@@ -27,6 +27,7 @@
 #define BNCSUTIL_CDKEYDECODER_H
 
 #include <bncsutil/mutil.h>
+#include <memory>
  
 /**
  * Internal key type constants.
@@ -38,17 +39,17 @@
 
 MCEXP(CDKeyDecoder) {
 protected:
-    char* cdkey;
+    std::unique_ptr<char[]> cdkey;
     int initialized;
     int keyOK;
     size_t keyLen;
-    char* keyHash;
+    std::unique_ptr<char[]> keyHash;
     size_t hashLen;
     int keyType;
     unsigned long value1;
     unsigned long value2;
     unsigned long product;
-    char* w3value2;
+    std::unique_ptr<char[]> w3value2;
     
     int processStarCraftKey();
     int processWarCraft2Key();

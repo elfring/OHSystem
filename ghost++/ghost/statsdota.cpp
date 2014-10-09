@@ -43,7 +43,6 @@ CStatsDOTA :: CStatsDOTA( CBaseGame *nGame ) : CStats( nGame ), m_Winner( 0 ), m
 
     for( unsigned int i = 0; i < 12; ++i )
     {
-        m_Players[i] = NULL;
         m_LeaverKills[i] = 0;
         m_LeaverDeaths[i] = 0;
         m_AssistsOnLeaverKills[i] = 0;
@@ -67,8 +66,7 @@ CStatsDOTA :: ~CStatsDOTA( )
 {
     for( unsigned int i = 0; i < 12; ++i )
     {
-        if( m_Players[i] )
-            delete m_Players[i];
+        m_Players[i].reset(nullptr);
     }
 }
 
@@ -221,7 +219,7 @@ bool CStatsDOTA :: ProcessAction( CIncomingAction *Action )
                                             // A legit kill, lets count that.
 
                                             if (!m_Players[ValueInt])
-                                                m_Players[ValueInt] = new CDBDotAPlayer( );
+                                                m_Players[ValueInt].reset(new CDBDotAPlayer());
 
                                             if (ValueInt != VictimColour)
                                                 m_Players[ValueInt]->SetKills( m_Players[ValueInt]->GetKills() + 1 );
@@ -237,7 +235,7 @@ bool CStatsDOTA :: ProcessAction( CIncomingAction *Action )
                                     if( ( VictimColour >= 1 && VictimColour <= 5 ) || ( VictimColour >= 7 && VictimColour <= 11 ) )
                                     {
                                         if (!m_Players[VictimColour])
-                                            m_Players[VictimColour] = new CDBDotAPlayer( );
+                                            m_Players[VictimColour].reset(new CDBDotAPlayer());
 
                                         m_Players[VictimColour]->SetDeaths( m_Players[VictimColour]->GetDeaths() + 1 );
                                         m_KillStreakCounter[VictimColour] = 0;
@@ -272,7 +270,7 @@ bool CStatsDOTA :: ProcessAction( CIncomingAction *Action )
                                     if( ( VictimColour >= 1 && VictimColour <= 5 ) || ( VictimColour >= 7 && VictimColour <= 11 ) )
                                     {
                                         if (!m_Players[VictimColour])
-                                            m_Players[VictimColour] = new CDBDotAPlayer( );
+                                            m_Players[VictimColour].reset(new CDBDotAPlayer());
 
                                         m_Game->GAME_Print( 15, MinString, SecString, Victim->GetName(), "", "" );
                                         m_Players[VictimColour]->SetDeaths( m_Players[VictimColour]->GetDeaths() + 1 );
@@ -357,7 +355,7 @@ bool CStatsDOTA :: ProcessAction( CIncomingAction *Action )
                                 CGamePlayer *Victim = m_Game->GetPlayerFromColour( ValueInt );
 
                                 if( !m_Players[AssistentColour] )
-                                    m_Players[AssistentColour] = new CDBDotAPlayer( );
+                                    m_Players[AssistentColour].reset(new CDBDotAPlayer());
 
                                 if ( Assistent && Victim )
                                 {
@@ -382,7 +380,7 @@ bool CStatsDOTA :: ProcessAction( CIncomingAction *Action )
                                 if( ( ValueInt >= 1 && ValueInt <= 5 ) || ( ValueInt >= 7 && ValueInt <= 11 ) )
                                 {
                                     if( !m_Players[ValueInt] )
-                                        m_Players[ValueInt] = new CDBDotAPlayer( );
+                                        m_Players[ValueInt].reset(new CDBDotAPlayer());
 
                                     m_Players[ValueInt]->SetCourierKills( m_Players[ValueInt]->GetCourierKills( ) + 1 );
                                 }
@@ -410,7 +408,7 @@ bool CStatsDOTA :: ProcessAction( CIncomingAction *Action )
                                 if( ( ValueInt >= 1 && ValueInt <= 5 ) || ( ValueInt >= 7 && ValueInt <= 11 ) )
                                 {
                                     if( !m_Players[ValueInt] )
-                                        m_Players[ValueInt] = new CDBDotAPlayer( );
+                                        m_Players[ValueInt].reset(new CDBDotAPlayer());
 
                                     m_Players[ValueInt]->SetTowerKills( m_Players[ValueInt]->GetTowerKills( ) + 1 );
                                 }
@@ -472,7 +470,7 @@ bool CStatsDOTA :: ProcessAction( CIncomingAction *Action )
                                 if( ( ValueInt >= 1 && ValueInt <= 5 ) || ( ValueInt >= 7 && ValueInt <= 11 ) )
                                 {
                                     if( !m_Players[ValueInt] )
-                                        m_Players[ValueInt] = new CDBDotAPlayer( );
+                                        m_Players[ValueInt].reset(new CDBDotAPlayer());
 
                                     m_Players[ValueInt]->SetRaxKills( m_Players[ValueInt]->GetRaxKills( ) + 1 );
                                 }
@@ -536,7 +534,7 @@ bool CStatsDOTA :: ProcessAction( CIncomingAction *Action )
                                 if (Player)
                                 {
                                     if (!m_Players[ValueInt])
-                                        m_Players[ValueInt] = new CDBDotAPlayer( );
+                                        m_Players[ValueInt].reset(new CDBDotAPlayer());
 
                                     m_Players[ValueInt]->SetLevel(Level);
                                     CONSOLE_Print( "[STATS"+TypePrefix+": " + m_Game->GetGameName( ) + "] "+ Player->GetName() + " is now level " + UTIL_ToString(m_Players[ValueInt]->GetLevel()) );
@@ -563,9 +561,7 @@ bool CStatsDOTA :: ProcessAction( CIncomingAction *Action )
                                         m_Players[ToColour]->SetNewColour( FromColour );
                                         m_Players[FromColour]->SetNewColour( ToColour );
                                         //                                                                      CONSOLE_Print( m_Players[ToColour] +" / "+ m_Players[FromColour] );
-                                        CDBDotAPlayer* bufferPlayer = m_Players[ToColour];
-                                        m_Players[ToColour] = m_Players[FromColour];
-                                        m_Players[FromColour] = bufferPlayer;
+                                        m_Players[ToColour].swap(m_Players[FromColour]);
 
                                         if ( FromPlayer ) FromString = FromPlayer->GetName( );
                                         if ( ToPlayer ) ToString = ToPlayer->GetName( );
@@ -646,7 +642,7 @@ bool CStatsDOTA :: ProcessAction( CIncomingAction *Action )
                                 if( ( ID >= 1 && ID <= 5 ) || ( ID >= 7 && ID <= 11 ) )
                                 {
                                     if (!m_Players[ID])
-                                        m_Players[ID] = new CDBDotAPlayer( );
+                                        m_Players[ID].reset(new CDBDotAPlayer());
 
                                     m_Players[ID]->SetCreepKills(ValueInt);
                                 }
@@ -661,7 +657,7 @@ bool CStatsDOTA :: ProcessAction( CIncomingAction *Action )
                                 {
 
                                     if (!m_Players[ID])
-                                        m_Players[ID] = new CDBDotAPlayer( );
+                                        m_Players[ID].reset(new CDBDotAPlayer());
 
                                     m_Players[ID]->SetCreepDenies(ValueInt);
                                 }
@@ -675,7 +671,7 @@ bool CStatsDOTA :: ProcessAction( CIncomingAction *Action )
                                 if( ( ID >= 1 && ID <= 5 ) || ( ID >= 7 && ID <= 11 ) )
                                 {
                                     if (!m_Players[ID])
-                                        m_Players[ID] = new CDBDotAPlayer( );
+                                        m_Players[ID].reset(new CDBDotAPlayer());
 
                                     m_Players[ID]->SetNeutralKills(ValueInt);
                                 }
@@ -804,7 +800,7 @@ bool CStatsDOTA :: ProcessAction( CIncomingAction *Action )
 				CONSOLE_Print( "[DEBUG:  Found Spell: "+Spell+ " | PlayerID: "+PlayerID+" | SpellID: "+SpellID  );
                                 if( ( ID >= 1 && ID <= 5 ) || ( ID >= 7 && ID <= 11 ) ) {
                                 	if( !m_Players[ID] )
-        	                        	m_Players[ID] = new CDBDotAPlayer( );
+        	                        	m_Players[ID].reset(new CDBDotAPlayer());
 
                                         m_Players[ID]->SetSpell( UTIL_ToUInt32( SpellID ) - 1, Spell );
 				}
@@ -853,7 +849,7 @@ bool CStatsDOTA :: ProcessAction( CIncomingAction *Action )
                             {
                                 if( !m_Players[ID] )
                                 {
-                                    m_Players[ID] = new CDBDotAPlayer( );
+                                    m_Players[ID].reset(new CDBDotAPlayer());
                                     m_Players[ID]->SetColour( ID );
                                 }
 

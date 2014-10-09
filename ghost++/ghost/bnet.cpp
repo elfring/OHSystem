@@ -49,21 +49,19 @@ using namespace boost :: filesystem;
 //
 
 CBNET :: CBNET( CGHost *nGHost, string nServer, string nServerAlias, string nBNLSServer, uint16_t nBNLSPort, uint32_t nBNLSWardenCookie, string nCDKeyROC, string nCDKeyTFT, string nCountryAbbrev, string nCountry, uint32_t nLocaleID, string nUserName, string nUserPassword, string nFirstChannel, char nCommandTrigger, bool nHoldFriends, bool nHoldClan, bool nPublicCommands, unsigned char nWar3Version, BYTEARRAY nEXEVersion, BYTEARRAY nEXEVersionHash, string nPasswordHashType, string nPVPGNRealmName, uint32_t nMaxMessageLength, uint32_t nHostCounterID )
+: m_GHost(nGHost),
+  m_Socket(new CTCPClient()),
+  m_Protocol(new CBNETProtocol()),
+  m_BNCSUtil(new CBNCSUtilInterface(nUserName, nUserPassword)),
+  m_Exiting(false),
+  m_Server(nServer)
 {
     // todotodo: append path seperator to Warcraft3Path if needed
 
-    m_GHost = nGHost;
-    m_Socket = new CTCPClient( );
-    m_Protocol = new CBNETProtocol( );
-    m_BNLSClient = NULL;
-    m_BNCSUtil = new CBNCSUtilInterface( nUserName, nUserPassword );
     m_CallablePList = m_GHost->m_DB->ThreadedPList( nServer );
     m_CallableBanList = m_GHost->m_DB->ThreadedBanList( nServer );
     m_CallableTBRemove = m_GHost->m_DB->ThreadedTBRemove( nServer );
-    m_Exiting = false;
-    m_Server = nServer;
     string LowerServer = m_Server;
-    m_AdminLog = vector<string>();
     transform( LowerServer.begin( ), LowerServer.end( ), LowerServer.begin( ), ::tolower );
     m_GHost->m_CheckForFinishedGames = GetTime();
     LastUpdateTime = GetTime();
@@ -148,17 +146,11 @@ CBNET :: CBNET( CGHost *nGHost, string nServer, string nServerAlias, string nBNL
 
 CBNET :: ~CBNET( )
 {
-    delete m_Socket;
-    delete m_Protocol;
-    delete m_BNLSClient;
-
     while( !m_Packets.empty( ) )
     {
         delete m_Packets.front( );
         m_Packets.pop( );
     }
-
-    delete m_BNCSUtil;
 
     for( vector<CIncomingFriendList *> :: iterator i = m_Friends.begin( ); i != m_Friends.end( ); ++i )
         delete *i;
@@ -920,8 +912,7 @@ bool CBNET :: Update( void *fd, void *send_fd )
         m_BotStatusUpdate.push_back( BotStatusUpdate( string( ), m_GHost->m_DB->ThreadedBotStatusUpdate(m_ServerAlias, 2 ) ) );
         CONSOLE_Print( "[BNET: " + m_ServerAlias + "] waiting 90 seconds to reconnect" );
         m_GHost->EventBNETDisconnected( this );
-        delete m_BNLSClient;
-        m_BNLSClient = NULL;
+        m_BNLSClient.reset(nullptr);
         m_BNCSUtil->Reset( m_UserName, m_UserPassword );
         m_Socket->Reset( );
         m_LastDisconnectedTime = GetTime( );
@@ -938,8 +929,7 @@ bool CBNET :: Update( void *fd, void *send_fd )
         CONSOLE_Print( "[BNET: " + m_ServerAlias + "] disconnected from battle.net" );
         CONSOLE_Print( "[BNET: " + m_ServerAlias + "] waiting 90 seconds to reconnect" );
         m_GHost->EventBNETDisconnected( this );
-        delete m_BNLSClient;
-        m_BNLSClient = NULL;
+        m_BNLSClient.reset(nullptr);
         m_BNCSUtil->Reset( m_UserName, m_UserPassword );
         m_Socket->Reset( );
         m_LastDisconnectedTime = GetTime( );
@@ -969,8 +959,7 @@ bool CBNET :: Update( void *fd, void *send_fd )
             if( m_BNLSClient->Update( fd, send_fd ) )
             {
                 CONSOLE_Print( "[BNET: " + m_ServerAlias + "] deleting BNLS client" );
-                delete m_BNLSClient;
-                m_BNLSClient = NULL;
+                m_BNLSClient.reset(nullptr);
             }
             else
             {
@@ -1270,8 +1259,7 @@ void CBNET :: ProcessPackets( )
                         if( !m_BNLSServer.empty( ) )
                         {
                             CONSOLE_Print( "[BNET: " + m_ServerAlias + "] creating BNLS client" );
-                            delete m_BNLSClient;
-                            m_BNLSClient = new CBNLSClient( m_BNLSServer, m_BNLSPort, m_BNLSWardenCookie );
+                            m_BNLSClient.reset(new CBNLSClient(m_BNLSServer, m_BNLSPort, m_BNLSWardenCookie));
                             m_BNLSClient->QueueWardenSeed( UTIL_ByteArrayToUInt32( m_BNCSUtil->GetKeyInfoROC( ), false, 16 ) );
                         }
                     }

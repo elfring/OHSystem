@@ -69,15 +69,25 @@ int tzuncompress( Bytef *dest, uLongf *destLen, const Bytef *source, uLong sourc
 // CPacked
 //
 
-CPacked :: CPacked( ) : m_Valid( true ), m_HeaderSize( 0 ), m_CompressedSize( 0 ), m_HeaderVersion( 0 ), m_DecompressedSize( 0 ), m_NumBlocks( 0 ), m_War3Identifier( 0 ), m_War3Version( 0 ), m_BuildNumber( 0 ), m_Flags( 0 ), m_ReplayLength( 0 )
+CPacked :: CPacked( )
+: m_CRC(new CCRC32()),
+  m_Valid(true),
+  m_HeaderSize(0),
+  m_CompressedSize(0),
+  m_HeaderVersion(0),
+  m_DecompressedSize(0),
+  m_NumBlocks(0),
+  m_War3Identifier(0),
+  m_War3Version(0),
+  m_BuildNumber(0),
+  m_Flags(0),
+  m_ReplayLength(0)
 {
-    m_CRC = new CCRC32( );
     m_CRC->Initialize( );
 }
 
 CPacked :: ~CPacked( )
 {
-    delete m_CRC;
 }
 
 void CPacked :: Load( string fileName, bool allBlocks )

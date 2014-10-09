@@ -23,6 +23,8 @@
 #ifndef STATSDOTA_H
 #define STATSDOTA_H
 
+#include <memory>
+
 //
 // CStatsDOTA
 //
@@ -32,7 +34,7 @@ class CDBDotAPlayer;
 class CStatsDOTA : public CStats
 {
 private:
-    CDBDotAPlayer *m_Players[12];
+    std::unique_ptr<CDBDotAPlayer> m_Players[12];
     uint32_t m_Winner;
     uint32_t m_Min;
     uint32_t m_Sec;

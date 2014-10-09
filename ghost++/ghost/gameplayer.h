@@ -24,6 +24,8 @@
 #ifndef GAMEPLAYER_H
 #define GAMEPLAYER_H
 
+#include <memory>
+
 class CTCPSocket;
 class CCommandPacket;
 class CGameProtocol;
@@ -45,13 +47,13 @@ protected:
     // note: we permit m_Socket to be NULL in this class to allow for the virtual host player which doesn't really exist
     // it also allows us to convert CPotentialPlayers to CGamePlayers without the CPotentialPlayer's destructor closing the socket
 
-    CTCPSocket *m_Socket;
+    std::unique_ptr<CTCPSocket> m_Socket;
     queue<CCommandPacket *> m_Packets;
     bool m_DeleteMe;
     bool m_Error;
     string m_ErrorString;
-    CIncomingJoinPlayer *m_IncomingJoinPlayer;
-    CIncomingGarenaUser *m_IncomingGarenaUser;
+    std::unique_ptr<CIncomingJoinPlayer> m_IncomingJoinPlayer;
+    std::unique_ptr<CIncomingGarenaUser> m_IncomingGarenaUser;
     string m_RoomName;
     bool m_Banned;
 	string m_CachedIP;
@@ -61,7 +63,7 @@ public:
     virtual ~CPotentialPlayer( );
 
     virtual CTCPSocket *GetSocket( )				{
-        return m_Socket;
+        return m_Socket.get();
     }
     virtual BYTEARRAY GetExternalIP( );
     virtual string GetExternalIPString( );
@@ -78,25 +80,24 @@ public:
         return m_ErrorString;
     }
     virtual CIncomingJoinPlayer *GetJoinPlayer( )	{
-        return m_IncomingJoinPlayer;
+        return m_IncomingJoinPlayer.get();
     }
     virtual CIncomingGarenaUser *GetGarenaUser( )	{
-        return m_IncomingGarenaUser;
+        return m_IncomingGarenaUser.get();
     }
     virtual BYTEARRAY GetGarenaIP( );
     string GetRoomName( )                                           {
         return m_RoomName;
     }
 
-    virtual void SetSocket( CTCPSocket *nSocket )	{
-        m_Socket = nSocket;
-    }
+    virtual void SetSocket( CTCPSocket *nSocket );
+
     virtual void SetDeleteMe( bool nDeleteMe )		{
         m_DeleteMe = nDeleteMe;
     }
-    virtual void SetGarenaUser( CIncomingGarenaUser *nIncomingGarenaUser ) {
-        m_IncomingGarenaUser = nIncomingGarenaUser;
-    }
+
+    virtual void SetGarenaUser( CIncomingGarenaUser *nIncomingGarenaUser );
+
     virtual void SetBanned( )            {
         m_Banned = true;
     }

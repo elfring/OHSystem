@@ -40,7 +40,13 @@
 // CPotentialPlayer
 //
 
-CPotentialPlayer :: CPotentialPlayer( CGameProtocol *nProtocol, CBaseGame *nGame, CTCPSocket *nSocket ) : m_Protocol( nProtocol ), m_Game( nGame ), m_Socket( nSocket ), m_DeleteMe( false ), m_Error( false ), m_IncomingJoinPlayer( NULL ), m_IncomingGarenaUser( NULL ), m_Banned( false )
+CPotentialPlayer :: CPotentialPlayer(CGameProtocol *nProtocol, CBaseGame *nGame, CTCPSocket *nSocket)
+: m_Protocol(nProtocol),
+  m_Game(nGame),
+  m_Socket(nSocket),
+  m_DeleteMe(false),
+  m_Error(false),
+  m_Banned(false)
 {
 	if (nSocket)
 		m_CachedIP = nSocket->GetIPString();
@@ -50,17 +56,11 @@ CPotentialPlayer :: CPotentialPlayer( CGameProtocol *nProtocol, CBaseGame *nGame
 
 CPotentialPlayer :: ~CPotentialPlayer( )
 {
-    if( m_Socket )
-        delete m_Socket;
-
     while( !m_Packets.empty( ) )
     {
         delete m_Packets.front( );
         m_Packets.pop( );
     }
-
-    delete m_IncomingJoinPlayer;
-    delete m_IncomingGarenaUser;
 }
 
 BYTEARRAY CPotentialPlayer :: GetGarenaIP( )
@@ -189,11 +189,10 @@ void CPotentialPlayer :: ProcessPackets( )
             switch( Packet->GetID( ) )
             {
             case CGameProtocol :: W3GS_REQJOIN:
-                delete m_IncomingJoinPlayer;
-                m_IncomingJoinPlayer = m_Protocol->RECEIVE_W3GS_REQJOIN( Packet->GetData( ) );
+                m_IncomingJoinPlayer.reset(m_Protocol->RECEIVE_W3GS_REQJOIN(Packet->GetData()));
 
                 if( m_IncomingJoinPlayer && !m_Banned)
-                    m_Game->EventPlayerJoined( this, m_IncomingJoinPlayer );
+                    m_Game->EventPlayerJoined(this, m_IncomingJoinPlayer.get());
 
                 // don't continue looping because there may be more packets waiting and this parent class doesn't handle them
                 // EventPlayerJoined creates the new player, NULLs the socket, and sets the delete flag on this object so it'll be deleted shortly
@@ -208,8 +207,7 @@ void CPotentialPlayer :: ProcessPackets( )
         {
             if( Packet->GetID( ) == CGCBIProtocol :: GCBI_INIT )
             {
-                delete m_IncomingGarenaUser;
-                m_IncomingGarenaUser = m_Game->m_GHost->m_GCBIProtocol->RECEIVE_GCBI_INIT( Packet->GetData( ) );
+                m_IncomingGarenaUser.reset(m_Game->m_GHost->m_GCBIProtocol->RECEIVE_GCBI_INIT(Packet->GetData()));
                 string RoomID = UTIL_ToString(m_IncomingGarenaUser->GetRoomID( ));
                 m_RoomName = m_Game->m_GHost->GetRoomName( string( RoomID.begin( ), RoomID.end( ) ) );
                 CONSOLE_Print( "[GCBI] Garena user detected; userid=" + UTIL_ToString( m_IncomingGarenaUser->GetUserID( ) ) + ", roomid=" + RoomID + ", RoomName=" + m_RoomName + ", experience=" + UTIL_ToString( m_IncomingGarenaUser->GetUserExp( ) ) + ", country=" + m_IncomingGarenaUser->GetCountryCode( ) );
@@ -225,6 +223,17 @@ void CPotentialPlayer :: Send( BYTEARRAY data )
     if( m_Socket )
         m_Socket->PutBytes( data );
 }
+
+void CPotentialPlayer::SetSocket( CTCPSocket *nSocket )
+{
+    m_Socket.reset(nSocket);
+}
+
+void CPotentialPlayer::SetGarenaUser( CIncomingGarenaUser *nIncomingGarenaUser )
+{
+    m_IncomingGarenaUser.reset(nIncomingGarenaUser);
+}
+
 
 //
 // CGamePlayer
@@ -818,8 +827,7 @@ void CGamePlayer :: Send( BYTEARRAY data )
 
 void CGamePlayer :: EventGProxyReconnect( CTCPSocket *NewSocket, uint32_t LastPacket )
 {
-    delete m_Socket;
-    m_Socket = NewSocket;
+    m_Socket.reset(NewSocket);
     m_Socket->PutBytes( m_Game->m_GHost->m_GPSProtocol->SEND_GPSS_RECONNECT( m_TotalPacketsReceived ) );
 
     uint32_t PacketsAlreadyUnqueued = m_TotalPacketsSent - m_GProxyBuffer.size( );

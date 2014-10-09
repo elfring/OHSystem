@@ -24,6 +24,8 @@
 #ifndef PACKED_H
 #define PACKED_H
 
+#include <memory>
+
 //
 // CPacked
 //
@@ -33,7 +35,7 @@ class CCRC32;
 class CPacked
 {
 public:
-    CCRC32 *m_CRC;
+    std::unique_ptr<CCRC32> m_CRC;
 
 protected:
     bool m_Valid;
