@@ -6,6 +6,7 @@ DFLAGS = -DGHOST_MYSQL
 OFLAGS = -O3 -g
 LFLAGS = -L. -L../bncsutil/src/bncsutil/ -L../StormLib/stormlib/  -lbncsutil -lpthread -ldl -lz -lgmp -lStorm -lmysqlclient_r -lboost_date_time -lboost_thread -lboost_system -lboost_filesystem
 CFLAGS =
+CXXFLAGS_EXTRA = -std=c++11
 
 ifeq ($(SYSTEM),Darwin)
 DFLAGS += -D__APPLE__
@@ -29,6 +30,7 @@ ifeq ($(SYSTEM),Darwin)
 CFLAGS += -I../mysql/include/
 endif
 
+CXXFLAGS = $(CFLAGS) $(CXXFLAGS_EXTRA)
 OBJS = bncsutilinterface.o bnet.o bnetprotocol.o bnlsclient.o bnlsprotocol.o commandpacket.o config.o crc32.o game.o game_base.o gameplayer.o gameprotocol.o gameslot.o gcbiprotocol.o ghost.o ghostdb.o ghostdbmysql.o gpsprotocol.o language.o map.o ohconnect.o packed.o replay.o savegame.o sha1.o socket.o stats.o statsdota.o statsw3mmd.o util.o
 COBJS =
 PROGS = ./ghost++
@@ -42,7 +44,7 @@ clean:
 	rm -f $(OBJS) $(COBJS) $(PROGS)
 
 $(OBJS): %.o: %.cpp
-	$(C++) -o $@ $(CFLAGS) -c $<
+	$(C++) -o $@ $(CXXFLAGS) -c $<
 
 $(COBJS): %.o: %.c
 	$(CC) -o $@ $(CFLAGS) -c $<
